@@ -1,0 +1,55 @@
+.App {
+  text-align: left;
+}
+
+.App h1, .App h2 {
+  color: #333;
+}
+
+.App h1 {
+  margin-bottom: 8px;
+  font-size: 2.5em;
+}
+
+.App h2 {
+  margin-top: 0;
+  color: #5a6c7d;
+  border-bottom: 2px solid #e1e8ed;
+  padding-bottom: 10px;
+}
+
+.App pre {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border-radius: 4px;
+  overflow-x: auto;
+  border-left: 4px solid #007bff;
+}
+
+.App ul {
+  line-height: 1.6;
+}
+
+.App ul li {
+  margin-bottom: 8px;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.status-item {
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #28a745;
+}
+
+.status-item strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #495057;
+}

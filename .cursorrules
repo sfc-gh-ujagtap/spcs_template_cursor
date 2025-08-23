@@ -1,0 +1,208 @@
+# React and Express Backend - Cursor AI Rules
+
+## Building React + Express.js Apps for SPCS Deployment
+
+**CRITICAL**: Always start by finding a working SPCS reference app. Use https://github.com/sfc-gh-ujagtap/sun_valley_spcs as the proven reference. Don't reinvent the wheel - compare systematically and replicate exactly. Complexity in Docker/build = architectural problems upstream.
+
+### Core Architecture Principles
+
+1. **Use Flat Project Structure** 
+   - ❌ Avoid: `client/` subdirectory with separate `package.json`
+   - ✅ Use: Root-level React app with single `package.json`
+   - Pattern: `src/`, `public/`, `build/`, `server.js` all at project root
+   - Express serves both API routes AND static React build files
+
+2. **Port Strategy - Always 3002**
+   - Use port 3002 consistently across ALL environments
+   - Local development, Docker, SPCS service spec - all port 3002
+
+3. **TypeScript Over JavaScript**
+   - Convert `.js` to `.tsx` for better development experience
+   - Add `tsconfig.json` from https://github.com/sfc-gh-ujagtap/sun_valley_spcs
+
+## Building Phase
+
+### Project Structure Setup
+- If `client/` directory exists, flatten it to root level
+- Merge `client/package.json` into root `package.json`
+- Move `client/src/` → `src/`, `client/public/` → `public/`
+- Compare `package.json` with https://github.com/sfc-gh-ujagtap/sun_valley_spcs
+- Use exact same dependency versions, add `--legacy-peer-deps`
+
+### Express Server Configuration
+Implement per-request Snowflake connection pattern (CRITICAL):
+```javascript
+// Fresh connection per API request - prevents timeouts
+async function connectToSnowflake() {
+    const connection = snowflake.createConnection(snowflakeConfig);
+    await new Promise((resolve, reject) => {
+        connection.connect((err, conn) => {
+            if (err) reject(err);
+            else resolve(conn);
+        });
+    });
+    return connection;
+}
+
+// Always destroy connection after use
+app.get('/api/endpoint', async (req, res) => {
+    let connection;
+    try {
+        connection = await connectToSnowflake();
+        const rows = await executeQuery(connection, query);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch data' });
+    } finally {
+        if (connection) {
+            connection.destroy(); // CRITICAL: Always cleanup
+        }
+    }
+});
+```
+
+### Dual Authentication Setup
+- Container detection: `fs.existsSync("/snowflake/session/token")`
+- SPCS: OAuth with `token: fs.readFileSync('/snowflake/session/token', 'ascii')`
+- Local: Read from `~/.snowsql/config` with warehouse specified
+- Add `accessUrl` to Snowflake config for SPCS
+- Dynamic logging: "Available via SPCS endpoint" when in container, local URL when not
+
+### Essential Endpoints
+- Health check: `app.get('/api/health', (req, res) => res.json({status: 'OK'}))`
+- Static files: `app.use(express.static('build'))`
+- React routing: `app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'build', 'index.html')))`
+- ⚠️ **Never hardcode localhost** - use dynamic container detection for environment-specific behavior
+
+### React Frontend
+- Implement mock data for local development when DB unavailable
+- Use TypeScript interfaces for all data structures
+- Add loading states and error boundaries
+- Include professional visualizations (Recharts, etc.)
+
+## Testing Phase
+
+### Local Development
+1. **Build process**: Ensure `npm run build` creates clean `build/` directory
+2. **Test locally**: Verify React app loads with proper styling and functionality
+3. **Database connection**: Test both local and mock data scenarios
+4. **API endpoints**: Verify all `/api/*` routes work correctly
+
+### Docker Testing
+1. **Build locally**: `docker build --platform linux/amd64 -t app-name:latest .`
+2. **Run container**: `docker run -p 3002:3002 app-name:latest`
+3. **Verify health**: Access `/api/health` endpoint on container port 3002
+4. **Test full app**: Verify React app loads and functions correctly
+
+## Deployment Phase
+
+### Database Setup
+- **Create dedicated application role first**: `CREATE ROLE IF NOT EXISTS APP_SPCS_ROLE;`
+- **For new databases**: Grant role permission to create databases:
+  ```sql
+  GRANT CREATE DATABASE ON ACCOUNT TO ROLE APP_SPCS_ROLE;
+  GRANT USAGE ON WAREHOUSE COMPUTE_WH TO ROLE APP_SPCS_ROLE;
+  ```
+- **For existing databases**: Grant necessary permissions to the app role:
+  ```sql
+  GRANT USAGE ON DATABASE EXISTING_DB TO ROLE APP_SPCS_ROLE;
+  GRANT USAGE ON SCHEMA EXISTING_DB.SCHEMA TO ROLE APP_SPCS_ROLE;
+  GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA EXISTING_DB.SCHEMA TO ROLE APP_SPCS_ROLE;
+  ```
+- Always include `USE WAREHOUSE COMPUTE_WH;` before DML
+- **Critical**: Use the same role for service creation AND data access
+- Use `CREATE IF NOT EXISTS` for idempotency
+
+### Multi-stage Dockerfile
+```dockerfile
+# Builder stage
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --legacy-peer-deps 
+COPY . .
+RUN npm run build
+
+# Production stage  
+FROM node:18-alpine AS production
+RUN apk add --no-cache dumb-init
+RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+WORKDIR /app
+COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
+RUN npm ci --only=production --legacy-peer-deps
+COPY --from=builder --chown=nodejs:nodejs /app/server.js ./
+COPY --from=builder --chown=nodejs:nodejs /app/build ./build/
+USER nodejs
+EXPOSE 3002
+ENV NODE_ENV=production PORT=3002
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "server.js"]
+```
+
+### SPCS Service Specification
+```yaml
+# Use singular 'container' and 'endpoint' (not plural)
+container:
+- name: app-name
+  image: /SPCS_APP_DB/IMAGE_SCHEMA/IMAGE_REPO/app-name:latest
+  env:
+    SERVER_PORT: 3002
+    NODE_ENV: production
+    SNOWFLAKE_DATABASE: SPCS_APP_DB
+    SNOWFLAKE_SCHEMA: APP_SCHEMA  
+    SNOWFLAKE_WAREHOUSE: COMPUTE_WH
+    SNOWFLAKE_ROLE: APP_SPCS_ROLE  # Use dedicated application role
+endpoint:
+- name: app-endpoint
+  port: 3002
+  public: true
+```
+
+
+### Deployment Commands
+```bash
+# 1. Verify CLI alignment (critical first step)
+snowsql -q "SELECT CURRENT_ACCOUNT();" && snow sql -q "SELECT CURRENT_ACCOUNT();"
+
+# 2. Create application role first (role must exist before database setup)
+snowsql -f scripts/create_app_role.sql
+
+# 3. Setup database (using the application role)
+snowsql -f scripts/setup_database.sql
+
+# 4. SPCS deployment (using the same application role)
+cd snowflake && ./buildAndUpload.sh
+snowsql -f snowflake/deploy.sql
+
+# 5. Verification
+snowsql -q "SELECT SYSTEM\$GET_SERVICE_STATUS('DB.SCHEMA.SERVICE');"
+```
+
+## Critical Success Patterns
+
+**🏆 Reference Implementation Strategy**
+- Use https://github.com/sfc-gh-ujagtap/sun_valley_spcs as your proven SPCS reference
+- Compare file structure, dependencies, Docker, service spec systematically  
+- When in doubt, replicate the reference exactly - don't innovate during deployment
+
+**⚡ SPCS OAuth Behavior**
+- OAuth intercepts ALL requests including CSS, JS, images
+- Proper React build + Express static serving handles this automatically
+- Don't try to fix "missing CSS" - fix the architecture instead
+
+**🔧 Debugging Commands** 
+- Logs: `CALL SYSTEM$GET_SERVICE_LOGS('DB.SCHEMA.SERVICE', '0')`
+- Status: `SELECT SYSTEM$GET_SERVICE_STATUS('DB.SCHEMA.SERVICE')`
+- Health: Access `/api/health` endpoint
+
+**🔑 Role Consistency Pattern**
+- Create dedicated application role (e.g., `APP_SPCS_ROLE`) instead of using ACCOUNTADMIN
+- Use the same role for both service creation and data access
+- Set `SNOWFLAKE_ROLE: APP_SPCS_ROLE` in service specification environment
+- Grant only necessary permissions to this role (principle of least privilege)
+- For existing databases: Grant specific permissions to the app role
+- For new databases: Grant the role CREATE DATABASE permission on account
+- Common mistake: Creating service with one role but data permissions on another
+
+**💡 Most Important Rule**: 
+When deploying to SPCS, don't reinvent the wheel. Find a working reference, compare systematically, and replicate exactly. Success comes from proven patterns, not innovation.
