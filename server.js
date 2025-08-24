@@ -28,7 +28,7 @@ function getSnowflakeConfig() {
             schema: process.env.SNOWFLAKE_SCHEMA || 'APP_SCHEMA',
             authenticator: 'OAUTH',
             token: fs.readFileSync('/snowflake/session/token', 'ascii'),
-            accessUrl: `https://app-${process.env.SNOWFLAKE_ACCOUNT}.snowflakecomputing.com`
+            accessUrl: `https://app-${process.env.HOST_NAME}.snowflakecomputing.com`
         };
     } else {
         console.log('🖥️  Running locally - using config from ~/.snowsql/config');
