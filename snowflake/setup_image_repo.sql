@@ -21,3 +21,4 @@ COMMENT = 'Repository for application container images';
 SHOW IMAGE REPOSITORIES;
 
 SELECT 'Image repository setup complete' as status;
+

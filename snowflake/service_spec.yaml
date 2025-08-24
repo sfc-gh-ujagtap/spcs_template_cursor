@@ -16,3 +16,4 @@ spec:
   - name: app-endpoint
     port: 3002
     public: true
+

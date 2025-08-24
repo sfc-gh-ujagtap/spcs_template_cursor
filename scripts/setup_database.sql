@@ -40,3 +40,4 @@ SELECT CURRENT_DATABASE() as database_name,
        CURRENT_SCHEMA() as schema_name,
        CURRENT_ROLE() as role_name,
        CURRENT_WAREHOUSE() as warehouse_name;
+

@@ -50,3 +50,4 @@ DESCRIBE SERVICE SPCS_APP_SERVICE;
 
 -- Get service endpoints (run after service is ready)
 SHOW ENDPOINTS IN SERVICE SPCS_APP_SERVICE;
+

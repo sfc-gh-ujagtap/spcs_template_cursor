@@ -55,3 +55,4 @@ echo -e "${GREEN}✅ Build and upload complete!${NC}"
 echo -e "${GREEN}📋 Image uploaded to: ${SNOWFLAKE_IMAGE_URL}${NC}"
 echo -e "${YELLOW}💡 Next step: Run deployment script${NC}"
 echo -e "${YELLOW}   snowsql -f snowflake/deploy.sql${NC}"
+

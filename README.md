@@ -235,3 +235,4 @@ SHOW COMPUTE POOLS;
 ## 📄 License
 
 MIT License - Use this template freely for your SPCS applications.
+

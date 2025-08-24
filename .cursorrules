@@ -97,21 +97,8 @@ app.get('/api/endpoint', async (req, res) => {
 ## Deployment Phase
 
 ### Database Setup
-- **Create dedicated application role first**: `CREATE ROLE IF NOT EXISTS APP_SPCS_ROLE;`
-- **For new databases**: Grant role permission to create databases:
-  ```sql
-  GRANT CREATE DATABASE ON ACCOUNT TO ROLE APP_SPCS_ROLE;
-  GRANT USAGE ON WAREHOUSE COMPUTE_WH TO ROLE APP_SPCS_ROLE;
-  ```
-- **For existing databases**: Grant necessary permissions to the app role:
-  ```sql
-  GRANT USAGE ON DATABASE EXISTING_DB TO ROLE APP_SPCS_ROLE;
-  GRANT USAGE ON SCHEMA EXISTING_DB.SCHEMA TO ROLE APP_SPCS_ROLE;
-  GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA EXISTING_DB.SCHEMA TO ROLE APP_SPCS_ROLE;
-  ```
-- Always include `USE WAREHOUSE COMPUTE_WH;` before DML
-- **Critical**: Use the same role for service creation AND data access
 - Use `CREATE IF NOT EXISTS` for idempotency
+- Generate tables with sample data if reuired
 
 ### Multi-stage Dockerfile
 ```dockerfile
@@ -139,44 +126,9 @@ ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "server.js"]
 ```
 
-### SPCS Service Specification
-```yaml
-# Use singular 'container' and 'endpoint' (not plural)
-container:
-- name: app-name
-  image: /SPCS_APP_DB/IMAGE_SCHEMA/IMAGE_REPO/app-name:latest
-  env:
-    SERVER_PORT: 3002
-    NODE_ENV: production
-    SNOWFLAKE_DATABASE: SPCS_APP_DB
-    SNOWFLAKE_SCHEMA: APP_SCHEMA  
-    SNOWFLAKE_WAREHOUSE: COMPUTE_WH
-    SNOWFLAKE_ROLE: APP_SPCS_ROLE  # Use dedicated application role
-endpoint:
-- name: app-endpoint
-  port: 3002
-  public: true
-```
-
 
 ### Deployment Commands
-```bash
-# 1. Verify CLI alignment (critical first step)
-snowsql -q "SELECT CURRENT_ACCOUNT();" && snow sql -q "SELECT CURRENT_ACCOUNT();"
-
-# 2. Create application role first (role must exist before database setup)
-snowsql -f scripts/create_app_role.sql
-
-# 3. Setup database (using the application role)
-snowsql -f scripts/setup_database.sql
-
-# 4. SPCS deployment (using the same application role)
-cd snowflake && ./buildAndUpload.sh
-snowsql -f snowflake/deploy.sql
-
-# 5. Verification
-snowsql -q "SELECT SYSTEM\$GET_SERVICE_STATUS('DB.SCHEMA.SERVICE');"
-```
+- Crete a single deployment script deploy.sh that setups up databases, image_repo, builds docker image, pushes it to production and starts the service and waits for endpoint to be available
 
 ## Critical Success Patterns
 
@@ -188,21 +140,11 @@ snowsql -q "SELECT SYSTEM\$GET_SERVICE_STATUS('DB.SCHEMA.SERVICE');"
 **⚡ SPCS OAuth Behavior**
 - OAuth intercepts ALL requests including CSS, JS, images
 - Proper React build + Express static serving handles this automatically
-- Don't try to fix "missing CSS" - fix the architecture instead
 
 **🔧 Debugging Commands** 
 - Logs: `CALL SYSTEM$GET_SERVICE_LOGS('DB.SCHEMA.SERVICE', '0')`
 - Status: `SELECT SYSTEM$GET_SERVICE_STATUS('DB.SCHEMA.SERVICE')`
 - Health: Access `/api/health` endpoint
-
-**🔑 Role Consistency Pattern**
-- Create dedicated application role (e.g., `APP_SPCS_ROLE`) instead of using ACCOUNTADMIN
-- Use the same role for both service creation and data access
-- Set `SNOWFLAKE_ROLE: APP_SPCS_ROLE` in service specification environment
-- Grant only necessary permissions to this role (principle of least privilege)
-- For existing databases: Grant specific permissions to the app role
-- For new databases: Grant the role CREATE DATABASE permission on account
-- Common mistake: Creating service with one role but data permissions on another
 
 **💡 Most Important Rule**: 
 When deploying to SPCS, don't reinvent the wheel. Find a working reference, compare systematically, and replicate exactly. Success comes from proven patterns, not innovation.

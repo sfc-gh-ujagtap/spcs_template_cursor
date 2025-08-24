@@ -64,3 +64,4 @@ echo -e "${YELLOW}4. Build and upload:${NC} cd snowflake && ./buildAndUpload.sh"
 echo -e "${YELLOW}5. Deploy service:${NC} snowsql -f snowflake/deploy.sql"
 echo ""
 echo -e "${GREEN}🏆 Demo completed successfully!${NC}"
+
