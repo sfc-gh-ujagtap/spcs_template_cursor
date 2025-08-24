@@ -98,7 +98,8 @@ app.get('/api/endpoint', async (req, res) => {
 
 ### Database Setup
 - Use `CREATE IF NOT EXISTS` for idempotency
-- Generate tables with sample data if reuired
+- Generate tables with sample data if requires
+- Do not use mock data to fulfill any requests on the frontend or the backend
 
 ### Multi-stage Dockerfile
 ```dockerfile
