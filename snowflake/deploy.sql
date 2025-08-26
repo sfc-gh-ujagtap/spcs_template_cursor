@@ -15,21 +15,24 @@ CREATE COMPUTE POOL IF NOT EXISTS APP_COMPUTE_POOL
   AUTO_SUSPEND_SECS = 300
   COMMENT = 'Compute pool for SPCS application';
 
--- Wait for compute pool to be active
--- You may need to run this multiple times until the pool is ready
-SELECT SYSTEM$WAIT_FOR_COMPUTE_POOL('APP_COMPUTE_POOL', 300);
+-- Note: Compute pool will be created and may take time to become active
+-- Check compute pool status with: DESCRIBE COMPUTE POOL APP_COMPUTE_POOL;
 
--- Create or replace the service
-CREATE SERVICE IF NOT EXISTS SPCS_APP_SERVICE
+-- Create the service with explicit account
+CREATE SERVICE SPCS_APP_SERVICE
   IN COMPUTE POOL APP_COMPUTE_POOL
   FROM SPECIFICATION $$
     spec:
       container:
-      - name: spcs-app-template
-        image: /SPCS_APP_DB/IMAGE_SCHEMA/IMAGE_REPO/spcs-app-template:latest
+      - name: sales-analytics-app
+        image: /SPCS_APP_DB/IMAGE_SCHEMA/IMAGE_REPO/spcs-sales-analytics:latest
         env:
-          SERVER_PORT: 3002
+          # Server configuration
+          PORT: 3002
           NODE_ENV: production
+          
+          # Snowflake connection configuration
+          SNOWFLAKE_ACCOUNT: VDB52565
           SNOWFLAKE_DATABASE: SPCS_APP_DB
           SNOWFLAKE_SCHEMA: APP_SCHEMA
           SNOWFLAKE_WAREHOUSE: COMPUTE_WH

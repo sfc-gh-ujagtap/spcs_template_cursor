@@ -20,19 +20,21 @@ spcs_template_cursor/
 ├── server.js                 # Express server with SPCS patterns
 ├── tsconfig.json            # TypeScript configuration
 ├── Dockerfile               # Multi-stage Docker build
+├── deploy.sh                # 🆕 Unified deployment script (ONE COMMAND!)
 ├── src/                     # React application source
-│   ├── App.tsx              # Main application component  
+│   ├── App.tsx              # Main application component with error boundaries
 │   ├── index.tsx            # React entry point
 │   └── components/          # React components
+│       ├── Dashboard.tsx    # Sample dashboard component
+│       └── ErrorBoundary.tsx # 🆕 Error boundary for robust error handling
 ├── public/                  # Static assets
 ├── scripts/                 # Database setup scripts
 │   ├── create_app_role.sql  # Application role creation
 │   └── setup_database.sql   # Database and schema setup
 └── snowflake/               # SPCS deployment files
-    ├── buildAndUpload.sh    # Build and upload script
-    ├── deploy.sql           # Service deployment
+    ├── deploy.sql           # Service deployment with embedded specification
     ├── manage_service.sql   # Service management commands
-    └── service_spec.yaml    # SPCS service specification
+    └── setup_image_repo.sql # Image repository setup
 ```
 
 ## 🚀 Quick Start
@@ -45,7 +47,7 @@ cp -r spcs_template_cursor my-new-app
 cd my-new-app
 
 # Update project name in package.json
-# Update APP_NAME in snowflake/buildAndUpload.sh
+# Update APP_NAME in deploy.sh
 ```
 
 ### 2. Install Dependencies
@@ -95,8 +97,8 @@ The application automatically detects whether it's running in SPCS or locally:
 ### Updating Configuration
 
 1. **Database/Schema names**: Update in `scripts/setup_database.sql` and `snowflake/deploy.sql`
-2. **Application name**: Update in `package.json` and `snowflake/buildAndUpload.sh`
-3. **Container image**: Update in `snowflake/service_spec.yaml` and `snowflake/deploy.sql`
+2. **Application name**: Update in `package.json` and `deploy.sh`
+3. **Container image**: Update in `snowflake/deploy.sql` (embedded specification)
 
 ## 🚀 SPCS Deployment
 
@@ -110,7 +112,26 @@ The application automatically detects whether it's running in SPCS or locally:
 
 2. **Docker** installed and running
 
-### Deployment Steps
+### 🎯 One-Command Deployment (Recommended)
+
+```bash
+# 🚀 Deploy everything with single command!
+./deploy.sh
+
+# This script automatically:
+# ✅ Creates application role
+# ✅ Sets up database and schema  
+# ✅ Creates image repository
+# ✅ Builds React application
+# ✅ Builds and pushes Docker image
+# ✅ Deploys SPCS service
+# ✅ Waits for service to be ready
+# ✅ Shows service endpoint
+```
+
+### 🔧 Manual Deployment Steps (Alternative)
+
+If you prefer step-by-step control:
 
 ```bash
 # 1. Create application role (run once per account)
@@ -123,7 +144,8 @@ snowsql -f scripts/setup_database.sql
 snowsql -f snowflake/setup_image_repo.sql
 
 # 4. Build and upload container image
-cd snowflake && ./buildAndUpload.sh
+# (This is included in deploy.sh, but can be done manually with:)
+# npm run build && docker build --platform linux/amd64 -t app:latest .
 
 # 5. Deploy service
 snowsql -f snowflake/deploy.sql
@@ -218,12 +240,19 @@ SHOW COMPUTE POOLS;
 
 ## 🏆 Best Practices
 
-1. **Always use the Sun Valley reference**: https://github.com/sfc-gh-ujagtap/sun_valley_spcs
-2. **Per-request connections**: Create fresh Snowflake connections for each API call
-3. **Consistent ports**: Use 3002 across all environments  
-4. **Role consistency**: Use same role for service creation AND data access
-5. **Mock data**: Implement fallbacks for local development
-6. **Error handling**: Always include proper error boundaries and cleanup
+This template follows all `.cursorrules` guidelines:
+
+1. **🏗️ Flat Project Structure**: Single `package.json`, root-level React app, Express serves both API and static files
+2. **🌐 Port Strategy**: Consistent port 3002 across all environments (local, Docker, SPCS)
+3. **🔤 TypeScript First**: All components use TypeScript with proper interfaces
+4. **🔄 Per-request Connections**: Fresh Snowflake connections for each API call (prevents timeouts)
+5. **🔐 Dual Authentication**: Automatic detection between SPCS OAuth and local development
+6. **🛡️ Error Boundaries**: Robust error handling with React error boundaries
+7. **⚡ Essential Endpoints**: Health check, static files, React routing all implemented
+8. **🏷️ CREATE IF NOT EXISTS**: All database scripts are idempotent
+9. **📊 Real Data**: No mock data in production, fallbacks only for local development
+10. **🚀 Unified Deployment**: Single `deploy.sh` script handles everything
+11. **📚 Reference Implementation**: Based on proven Sun Valley SPCS patterns
 
 ## 📚 Resources
 

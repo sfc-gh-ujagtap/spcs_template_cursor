@@ -1,7 +1,7 @@
 {
-  "name": "spcs-app-template",
-  "version": "0.1.0",
-  "description": "SPCS Template for React + Express applications",
+  "name": "spcs-sales-analytics",
+  "version": "1.0.0",
+  "description": "Sales Analytics Dashboard - SPCS Template with real business data",
   "private": true,
   "dependencies": {
     "@testing-library/jest-dom": "^5.16.4",

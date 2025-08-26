@@ -21,13 +21,6 @@
 
 ## Building Phase
 
-### Project Structure Setup
-- If `client/` directory exists, flatten it to root level
-- Merge `client/package.json` into root `package.json`
-- Move `client/src/` → `src/`, `client/public/` → `public/`
-- Compare `package.json` with https://github.com/sfc-gh-ujagtap/sun_valley_spcs
-- Use exact same dependency versions, add `--legacy-peer-deps`  
-
 ### Express Server Configuration
 Implement per-request Snowflake connection pattern (CRITICAL):
 ```javascript
@@ -62,15 +55,22 @@ app.get('/api/endpoint', async (req, res) => {
 
 ### Database Setup
 - Look at user prompt to see if the app needs access to the existing database 
-- Implement sample data for local development if no datbase is provided in the prompt
-- Generally keep any database setup in a single script file
+- Implement sample data if no database is provided in the prompt
+- Keep any database setup in a single script file
+- Use `CREATE IF NOT EXISTS` for idempotency
+
+###Warehouse & SPCS Service Setup
+- Look for the warehouse to use in the prompt
+- If no warehouse is specified, create a new one and use it for creating and accessing data
+- Create deploy.sql to create a service with inline specs including the warehouse used
+- Create separate files for image repo setup, service setup and managing service under spcs folder
  
 ### Role Access
-- Every app should provision a new account level role
-- This role should own the SPCS services and the sample data
+- Every app should provision a new account level role named specifically for the app
+- This role should own the SPCS service, warehouse and sample dataset
 - This role should also be granted any existing databases provided in the prompt
 - SPCS service should access the data with the provisioned role
-- This role should be granted to the user used to create this app as mentioed in the config
+- This role should be granted to the current user
 
 ### Dual Authentication Setup in Express Server for Data Access
 - Container detection: `fs.existsSync("/snowflake/session/token")`
@@ -105,11 +105,6 @@ app.get('/api/endpoint', async (req, res) => {
 
 ## Deployment Phase
 
-### Database Setup
-- Use `CREATE IF NOT EXISTS` for idempotency
-- Generate tables with sample data if requires
-- Do not use mock data to fulfill any requests on the frontend or the backend (always use real data)
-
 ### Multi-stage Dockerfile
 ```dockerfile
 # Builder stage
@@ -137,25 +132,11 @@ CMD ["node", "server.js"]
 ```
 
 ### Deployment Commands
-- Crete a single deployment script deploy.sh
-- The script should setup databases, image_repo, build docker image and pushes it to Snowflake
-- Then it should start the service and wait for endpoint to be available
-
-## Critical Success Patterns
-
-**🏆 Reference Implementation Strategy**
-- Use https://github.com/sfc-gh-ujagtap/sun_valley_spcs as your proven SPCS reference
-- Compare file structure, dependencies, Docker, service spec systematically  
-- When in doubt, replicate the reference exactly - don't innovate during deployment
-
-**⚡ SPCS OAuth Behavior**
-- OAuth intercepts ALL requests including CSS, JS, images
-- Proper React build + Express static serving handles this automatically
-
-**🔧 Debugging Commands** 
-- Logs: `CALL SYSTEM$GET_SERVICE_LOGS('DB.SCHEMA.SERVICE', '0')`
-- Status: `SELECT SYSTEM$GET_SERVICE_STATUS('DB.SCHEMA.SERVICE')`
-- Health: Access `/api/health` endpoint
-
-**💡 Most Important Rule**: 
-When deploying to SPCS, don't reinvent the wheel. Find a working reference, compare systematically, and replicate exactly. Success comes from proven patterns, not innovation.
+- Create a single deployment script deploy.sh
+- The script should work for both local and spcs deployment
+- The script should setup app role and warehouse
+- The script should setup the sample dataset if required
+- The script should setup image_repo
+- The script should build docker image and push it to Snowflake
+- Then it should start the service and wait for endpoints to be available
+- **CRITICAL**: Always use `-c default` flag in all snowsql commands to specify connection
