@@ -7,7 +7,6 @@
 ### Core Architecture Principles
 
 1. **Use Flat Project Structure** 
-   - ❌ Avoid: `client/` subdirectory with separate `package.json`
    - ✅ Use: Root-level React app with single `package.json`
    - Pattern: `src/`, `public/`, `build/`, `server.js` all at project root
    - Express serves both API routes AND static React build files
@@ -27,7 +26,7 @@
 - Merge `client/package.json` into root `package.json`
 - Move `client/src/` → `src/`, `client/public/` → `public/`
 - Compare `package.json` with https://github.com/sfc-gh-ujagtap/sun_valley_spcs
-- Use exact same dependency versions, add `--legacy-peer-deps`
+- Use exact same dependency versions, add `--legacy-peer-deps`  
 
 ### Express Server Configuration
 Implement per-request Snowflake connection pattern (CRITICAL):
@@ -61,7 +60,19 @@ app.get('/api/endpoint', async (req, res) => {
 });
 ```
 
-### Dual Authentication Setup
+### Database Setup
+- Look at user prompt to see if the app needs access to the existing database 
+- Implement sample data for local development if no datbase is provided in the prompt
+- Generally keep any database setup in a single script file
+ 
+### Role Access
+- Every app should provision a new account level role
+- This role should own the SPCS services and the sample data
+- This role should also be granted any existing databases provided in the prompt
+- SPCS service should access the data with the provisioned role
+- This role should be granted to the user used to create this app as mentioed in the config
+
+### Dual Authentication Setup in Express Server for Data Access
 - Container detection: `fs.existsSync("/snowflake/session/token")`
 - SPCS: OAuth with `token: fs.readFileSync('/snowflake/session/token', 'ascii')`
 - Local: Read from `~/.snowsql/config` with warehouse specified
@@ -75,13 +86,11 @@ app.get('/api/endpoint', async (req, res) => {
 - ⚠️ **Never hardcode localhost** - use dynamic container detection for environment-specific behavior
 
 ### React Frontend
-- Implement mock data for local development when DB unavailable
 - Use TypeScript interfaces for all data structures
 - Add loading states and error boundaries
 - Include professional visualizations (Recharts, etc.)
 
 ## Testing Phase
-
 ### Local Development
 1. **Build process**: Ensure `npm run build` creates clean `build/` directory
 2. **Test locally**: Verify React app loads with proper styling and functionality
@@ -99,7 +108,7 @@ app.get('/api/endpoint', async (req, res) => {
 ### Database Setup
 - Use `CREATE IF NOT EXISTS` for idempotency
 - Generate tables with sample data if requires
-- Do not use mock data to fulfill any requests on the frontend or the backend
+- Do not use mock data to fulfill any requests on the frontend or the backend (always use real data)
 
 ### Multi-stage Dockerfile
 ```dockerfile
@@ -127,9 +136,10 @@ ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "server.js"]
 ```
 
-
 ### Deployment Commands
-- Crete a single deployment script deploy.sh that setups up databases, image_repo, builds docker image, pushes it to production and starts the service and waits for endpoint to be available
+- Crete a single deployment script deploy.sh
+- The script should setup databases, image_repo, build docker image and pushes it to Snowflake
+- Then it should start the service and wait for endpoint to be available
 
 ## Critical Success Patterns
 
