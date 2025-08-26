@@ -128,7 +128,198 @@ The Express server provides 8 comprehensive API endpoints:
 }
 ```
 
+## 🛠️ Prerequisites & Tool Setup
+
+Before using this template, you need to install and configure the required Snowflake tools.
+
+### **Required Tools**
+
+1. **SnowSQL CLI** - For database operations and service management
+2. **Snow CLI** - For SPCS image registry operations  
+3. **Docker** - For building and running containers
+4. **Node.js 18+** - For running the React/Express application
+
+### **1. Install SnowSQL CLI**
+
+**macOS/Linux:**
+```bash
+# Download and install SnowSQL
+curl -O https://sfc-repo.snowflakecomputing.com/snowsql/bootstrap/1.2/linux_x86_64/snowsql-1.2.32-linux_x86_64.bash
+bash snowsql-1.2.32-linux_x86_64.bash
+
+# Or using Homebrew on macOS
+brew install --cask snowflake-snowsql
+```
+
+**Windows:**
+```powershell
+# Download from: https://developers.snowflake.com/snowsql/
+# Run the installer and follow the setup wizard
+```
+
+### **2. Install Snow CLI**
+
+**All Platforms:**
+```bash
+# Install via pip
+pip install snowflake-cli-labs
+
+# Or using pipx for isolated installation
+pipx install snowflake-cli-labs
+
+# Verify installation
+snow --version
+```
+
+### **3. Configure SnowSQL Default Connection**
+
+Create your SnowSQL configuration file with a default connection:
+
+**Location:**
+- **Linux/macOS**: `~/.snowsql/config`
+- **Windows**: `%USERPROFILE%\.snowsql\config`
+
+**Configuration Content:**
+```ini
+[connections]
+
+[connections.default]
+# Replace with your Snowflake account details
+accountname = your-account-name.region.cloud
+username = your-username
+# Option 1: Use password (less secure)
+password = your-password
+
+# Option 2: Use key-pair authentication (recommended)
+# private_key_path = ~/.ssh/snowflake_key.p8
+# private_key_passphrase = your-passphrase
+
+# Default connection settings
+warehousename = COMPUTE_WH
+rolename = ACCOUNTADMIN
+# Connection options
+login_timeout = 60
+network_timeout = 300
+query_timeout = 300
+```
+
+### **4. Set Up Key-Pair Authentication (Recommended)**
+
+For enhanced security, use key-pair authentication:
+
+```bash
+# Generate RSA key pair
+openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out ~/.ssh/snowflake_key.p8 -nocrypt
+
+# Generate public key  
+openssl rsa -in ~/.ssh/snowflake_key.p8 -pubout -out ~/.ssh/snowflake_key.pub
+
+# Get the public key value (copy this)
+grep -v "BEGIN\|END" ~/.ssh/snowflake_key.pub | tr -d '\n'
+```
+
+**Configure the public key in Snowflake:**
+```sql
+-- Connect to Snowflake and run:
+USE ROLE ACCOUNTADMIN;
+ALTER USER your-username SET RSA_PUBLIC_KEY='<your-public-key-value>';
+```
+
+**Update your SnowSQL config:**
+```ini
+[connections.default]
+accountname = your-account-name.region.cloud  
+username = your-username
+private_key_path = ~/.ssh/snowflake_key.p8
+# Remove the password line when using key-pair auth
+```
+
+### **5. Configure Snow CLI**
+
+Set up the Snow CLI with your Snowflake connection:
+
+```bash
+# Configure Snow CLI (creates ~/.snowflake/config.toml)
+snow connection add default \
+  --account your-account-name.region.cloud \
+  --user your-username \
+  --password your-password \
+  --warehouse COMPUTE_WH \
+  --role ACCOUNTADMIN
+
+# Or for key-pair authentication:
+snow connection add default \
+  --account your-account-name.region.cloud \
+  --user your-username \
+  --private-key-path ~/.ssh/snowflake_key.p8 \
+  --warehouse COMPUTE_WH \
+  --role ACCOUNTADMIN
+```
+
+### **6. Verify Your Setup**
+
+Test that everything is configured correctly:
+
+```bash
+# Test SnowSQL connection
+snowsql -c default -q "SELECT CURRENT_USER(), CURRENT_ROLE(), CURRENT_WAREHOUSE();"
+
+# Test Snow CLI connection  
+snow connection test default
+
+# Verify Docker is running
+docker --version
+docker run hello-world
+
+# Verify Node.js version
+node --version  # Should be 18.x or higher
+npm --version
+```
+
+### **7. Required Snowflake Permissions**
+
+Your Snowflake user needs these permissions for SPCS deployment:
+
+```sql
+-- Your user should have ACCOUNTADMIN role or these specific grants:
+USE ROLE ACCOUNTADMIN;
+
+-- Database and schema creation
+GRANT CREATE DATABASE ON ACCOUNT TO ROLE your-role;
+GRANT CREATE SCHEMA ON DATABASE TO ROLE your-role;
+
+-- SPCS-specific permissions
+GRANT CREATE COMPUTE POOL ON ACCOUNT TO ROLE your-role;
+GRANT CREATE WAREHOUSE ON ACCOUNT TO ROLE your-role;  
+GRANT CREATE ROLE ON ACCOUNT TO ROLE your-role;
+
+-- Image repository permissions
+GRANT CREATE IMAGE REPOSITORY ON SCHEMA TO ROLE your-role;
+```
+
+### **Getting Your Account Information**
+
+If you're not sure about your account details:
+
+1. **Account Name**: Found in your Snowflake URL
+   - URL: `https://abc123.us-west-2.aws.snowflakecomputing.com`
+   - Account: `abc123.us-west-2.aws`
+
+2. **Organization Name**: Run in Snowflake Web UI:
+   ```sql
+   SELECT CURRENT_ORGANIZATION_NAME();
+   ```
+
+3. **Region/Cloud**: Run in Snowflake Web UI:
+   ```sql
+   SELECT CURRENT_REGION(), CURRENT_CLOUD();
+   ```
+
+---
+
 ## 🚀 Quick Start
+
+> **⚠️ Important**: Complete the [Prerequisites & Tool Setup](#️-prerequisites--tool-setup) section above before proceeding!
 
 ### 1. **Get the Template**
 
