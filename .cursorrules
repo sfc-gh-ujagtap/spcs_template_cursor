@@ -10,6 +10,7 @@
    - ✅ Use: Root-level React app with single `package.json`
    - Pattern: `src/`, `public/`, `build/`, `server.js` all at project root
    - Express serves both API routes AND static React build files
+   - Beware of manifest.json causing Content Security Policy errors in SPCS
 
 2. **Port Strategy - Always 3002**
    - Use port 3002 consistently across ALL environments
