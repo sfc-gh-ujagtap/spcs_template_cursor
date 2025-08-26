@@ -134,10 +134,10 @@ Before using this template, you need to install and configure the required Snowf
 
 ### **Required Tools**
 
-1. **SnowSQL CLI** - For database operations and service management
-2. **Snow CLI** - For SPCS image registry operations  
-3. **Docker** - For building and running containers
-4. **Node.js 18+** - For running the React/Express application
+- **SnowSQL CLI** - For database operations and service management
+- **Snow CLI** - For SPCS image registry operations  
+- **Docker** - For building and running containers
+- **Node.js 18+** - For running the React/Express application
 
 ### **1. Install SnowSQL CLI**
 
