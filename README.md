@@ -1,267 +1,368 @@
-# 🚀 SPCS Application Template
+# 📊 Sales Analytics Dashboard - SPCS Template
 
-A comprehensive template for building React + Express.js applications deployable to Snowflake's Snowpark Container Services (SPCS).
+A **complete example** of a React + Express.js sales analytics dashboard built for Snowflake's Snowpark Container Services (SPCS). This template provides a working, production-ready application that you can use as a starting point for your own SPCS projects.
+
+## 🎯 What This Template Provides
+
+This isn't just a skeleton - it's a **fully functional sales analytics dashboard** featuring:
+
+- 📈 **Real-time Sales Metrics**: Revenue, orders, customers, and growth analytics
+- 🛍️ **Product Analytics**: Top products by category with performance insights  
+- 📊 **Interactive Charts**: Monthly revenue trends, category breakdowns, and KPIs
+- 🎛️ **Dynamic Filtering**: Filter by time period (7/30/90 days) and product categories
+- 📱 **Responsive Design**: Modern, mobile-friendly interface with professional styling
+- 🔄 **Live Data**: Connects to Snowflake with real sample e-commerce data
+
+## ✨ Dashboard Features
+
+### 📊 **Key Metrics Display**
+- Total revenue with growth indicators
+- Order count and average order value
+- Customer count and repeat customer rate
+- Real-time calculations from Snowflake data
+
+### 📈 **Visualizations**
+- **Monthly Revenue Chart**: Interactive line chart showing revenue trends
+- **Category Performance**: Bar chart comparing sales across product categories  
+- **Top Products**: Dynamic list of best-selling products by category
+- **KPI Cards**: Color-coded metrics with trend indicators
+
+### 🎚️ **Interactive Controls**
+- **Time Period Filter**: Last 7, 30, 90 days, or all time
+- **Category Filter**: All categories or specific product categories
+- **Real-time Updates**: Instant chart and metric updates on filter changes
 
 ## 🏗️ Architecture
 
-This template follows the proven **flat project structure** pattern with:
-- **Single `package.json`** at root level
-- **Express server** that serves both API routes AND static React build files  
-- **Port 3002** consistently across all environments
-- **Per-request Snowflake connections** to prevent timeouts
-- **Dual authentication** (SPCS OAuth + local development)
+This template follows the proven **flat project structure** pattern optimized for SPCS:
+
+- **Single `package.json`** at root level for simplified dependency management
+- **Express server** serves both API routes AND static React build files  
+- **Port 3002** consistently across all environments (local, Docker, SPCS)
+- **Per-request Snowflake connections** to prevent timeout issues
+- **Dual authentication** (SPCS OAuth + local development credentials)
+- **TypeScript throughout** for type safety and better development experience
 
 ## 📁 Project Structure
 
 ```
-spcs_template_cursor/
+sales-analytics-dashboard/
 ├── .cursorrules              # Cursor AI configuration with SPCS best practices
 ├── package.json              # Dependencies and scripts
-├── server.js                 # Express server with SPCS patterns
+├── server.js                 # Express server with 8 API endpoints
 ├── tsconfig.json            # TypeScript configuration
 ├── Dockerfile               # Multi-stage Docker build
-├── deploy.sh                # 🆕 Unified deployment script (ONE COMMAND!)
+├── deploy.sh                # 🚀 ONE-COMMAND deployment script
 ├── src/                     # React application source
-│   ├── App.tsx              # Main application component with error boundaries
+│   ├── App.tsx              # Main app with dashboard layout
 │   ├── index.tsx            # React entry point
-│   └── components/          # React components
-│       ├── Dashboard.tsx    # Sample dashboard component
-│       └── ErrorBoundary.tsx # 🆕 Error boundary for robust error handling
-├── public/                  # Static assets
+│   └── components/          
+│       ├── Dashboard.tsx    # Main dashboard with charts & filters
+│       └── ErrorBoundary.tsx # Robust error handling
+├── public/                  # Static assets and manifest
 ├── scripts/                 # Database setup scripts
-│   ├── create_app_role.sql  # Application role creation
-│   └── setup_database.sql   # Database and schema setup
+│   ├── create_app_role.sql  # Creates APP_SPCS_ROLE with permissions
+│   └── setup_database.sql   # Creates sample e-commerce data
 └── snowflake/               # SPCS deployment files
-    ├── deploy.sql           # Service deployment with embedded specification
+    ├── deploy.sql           # Service deployment with resource specs
     ├── manage_service.sql   # Service management commands
-    └── setup_image_repo.sql # Image repository setup
+    └── setup_image_repo.sql # Image repository configuration
+```
+
+## 🗄️ Database Schema
+
+The template creates a complete e-commerce database with realistic sample data:
+
+### **Tables Created**
+```sql
+-- Customer data (220 customers)
+CUSTOMERS (id, name, email, registration_date, total_orders, total_spent)
+
+-- Product catalog (220 products across 5 categories)  
+PRODUCTS (id, name, category, price, cost, stock_quantity, supplier)
+
+-- Order transactions (500+ orders with realistic patterns)
+ORDERS (id, customer_id, product_id, quantity, unit_price, total_amount, order_date, status)
+```
+
+### **Sample Data Highlights**
+- **$67,971.86** total revenue across all orders
+- **5 product categories**: Electronics, Clothing, Home & Garden, Books, Sports
+- **Realistic pricing**: $5.99 to $899.99 product range  
+- **Time-series data**: Orders spanning multiple months for trend analysis
+- **Customer behavior**: Repeat customers with varied order patterns
+
+## 🚀 API Endpoints
+
+The Express server provides 8 comprehensive API endpoints:
+
+### **📊 Core Analytics**
+- `GET /api/health` - Service health check
+- `GET /api/data?period=30&category=all` - Main dashboard metrics
+- `GET /api/monthly-revenue?period=90` - Revenue trends by month
+
+### **🛍️ Product Analytics**  
+- `GET /api/categories` - Available product categories
+- `GET /api/category-sales?period=7&category=Electronics` - Sales by category
+- `GET /api/top-products-by-category?category=all&period=30` - Best sellers
+
+### **🔍 Detailed Views**
+- `GET /api/customer-analytics?period=all` - Customer insights  
+- `GET /api/product-performance?category=Clothing` - Product metrics
+
+### **Example API Response**
+```json
+{
+  "success": true,
+  "data": {
+    "totalRevenue": 67971.86,
+    "totalOrders": 504,
+    "totalCustomers": 220,
+    "avgOrderValue": 134.87,
+    "growth": {
+      "revenue": 12.5,
+      "orders": 8.3,
+      "customers": 15.2
+    }
+  }
+}
 ```
 
 ## 🚀 Quick Start
 
-### 1. Create New Project
+### 1. **Get the Template**
 
 ```bash
-# Copy template to new project
-cp -r spcs_template_cursor my-new-app
-cd my-new-app
+# Clone the repository
+git clone <repository-url> my-sales-dashboard
+cd my-sales-dashboard
 
-# Update project name in package.json
-# Update APP_NAME in deploy.sh
-```
-
-### 2. Install Dependencies
-
-```bash
+# Install dependencies
 npm install --legacy-peer-deps
 ```
 
-### 3. Local Development
+### 2. **Local Development**
 
 ```bash
-# Start React development server
-npm start
+# Set up database and sample data (creates realistic e-commerce data)
+./deploy.sh --local
 
-# Or start Express server (serves built React app)
-npm run build
+# Start the development server
 npm run dev
 ```
 
-### 4. Test Docker Build
+**Access your dashboard**: http://localhost:3002
+
+### 3. **Deploy to SPCS**
 
 ```bash
-# Build and test Docker image locally
-npm run docker:build
-npm run docker:run
+# Deploy everything to Snowflake SPCS with one command!
+./deploy.sh --spcs
 
-# Test endpoints
-curl http://localhost:3002/api/health
+# The script will:
+# ✅ Create APP_SPCS_ROLE with proper permissions
+# ✅ Set up SPCS_APP_DB database with sample data  
+# ✅ Build and push Docker image to Snowflake
+# ✅ Deploy SPCS service with proper configuration
+# ✅ Show you the public endpoint URL
+```
+
+**Your dashboard will be live** at the provided SPCS endpoint!
+
+## 🎨 Customizing for Your Use Case
+
+### **Change the Data Model**
+
+1. **Update Database Schema**: Modify `scripts/setup_database.sql`
+   ```sql
+   -- Add your own tables
+   CREATE TABLE YOUR_DATA (
+       id NUMBER AUTOINCREMENT,
+       your_field VARCHAR(100),
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+   );
+   ```
+
+2. **Update API Endpoints**: Modify queries in `server.js`
+   ```javascript
+   // Add your custom endpoint
+   app.get('/api/your-data', async (req, res) => {
+       const query = 'SELECT * FROM YOUR_DATA LIMIT 100';
+       // ... connection handling code
+   });
+   ```
+
+3. **Update Frontend**: Modify `src/components/Dashboard.tsx`
+   ```typescript
+   // Add your custom components
+   const YourCustomChart = ({ data }: { data: YourDataType[] }) => {
+       return <div>Your visualization here</div>;
+   };
+   ```
+
+### **Rebrand the Dashboard**
+
+1. **Update App Name**: Change in `package.json` and `deploy.sh`
+2. **Customize Styling**: Modify `src/App.css` and component styles  
+3. **Update Branding**: Replace logo and colors in `public/` and CSS files
+4. **Change Endpoints**: Update API base URLs if needed
+
+### **Add New Visualizations**
+
+The template uses **Recharts** for visualization. Add new charts easily:
+
+```typescript
+import { LineChart, BarChart, PieChart } from 'recharts';
+
+// Add to Dashboard.tsx
+<LineChart width={600} height={300} data={yourData}>
+  <XAxis dataKey="month" />
+  <YAxis />
+  <Line type="monotone" dataKey="value" stroke="#8884d8" />
+</LineChart>
 ```
 
 ## 🔧 Configuration
 
-### Environment Variables
+### **Environment Variables**
 
-The application automatically detects whether it's running in SPCS or locally:
+The application automatically detects its environment:
 
-**SPCS Container (automatic):**
-- `SNOWFLAKE_DATABASE` - Database name (default: SPCS_APP_DB)  
-- `SNOWFLAKE_SCHEMA` - Schema name (default: APP_SCHEMA)
-- `SNOWFLAKE_WAREHOUSE` - Warehouse (default: COMPUTE_WH)
-- `SNOWFLAKE_ROLE` - Role (default: APP_SPCS_ROLE)
+**SPCS Container (automatic detection):**
+- `SNOWFLAKE_DATABASE`: SPCS_APP_DB
+- `SNOWFLAKE_SCHEMA`: APP_SCHEMA  
+- `SNOWFLAKE_WAREHOUSE`: COMPUTE_WH
+- `SNOWFLAKE_ROLE`: APP_SPCS_ROLE
 
 **Local Development:**
-- Uses `~/.snowsql/config` or environment variables
-- Falls back to mock data if database unavailable
+- Reads from `~/.snowsql/config` default connection
+- Environment variables override config file settings
+- Falls back to mock data if Snowflake unavailable
 
-### Updating Configuration
+### **Docker Configuration**
 
-1. **Database/Schema names**: Update in `scripts/setup_database.sql` and `snowflake/deploy.sql`
-2. **Application name**: Update in `package.json` and `deploy.sh`
-3. **Container image**: Update in `snowflake/deploy.sql` (embedded specification)
-
-## 🚀 SPCS Deployment
-
-### Prerequisites
-
-1. **Snowflake CLI tools** configured:
-   ```bash
-   snowsql -q "SELECT CURRENT_ACCOUNT();"
-   snow sql -q "SELECT CURRENT_ACCOUNT();"
-   ```
-
-2. **Docker** installed and running
-
-### 🎯 One-Command Deployment (Recommended)
-
-```bash
-# 🚀 Deploy everything with single command!
-./deploy.sh
-
-# This script automatically:
-# ✅ Creates application role
-# ✅ Sets up database and schema  
-# ✅ Creates image repository
-# ✅ Builds React application
-# ✅ Builds and pushes Docker image
-# ✅ Deploys SPCS service
-# ✅ Waits for service to be ready
-# ✅ Shows service endpoint
-```
-
-### 🔧 Manual Deployment Steps (Alternative)
-
-If you prefer step-by-step control:
-
-```bash
-# 1. Create application role (run once per account)
-snowsql -f scripts/create_app_role.sql
-
-# 2. Setup database and schema
-snowsql -f scripts/setup_database.sql  
-
-# 3. Setup image repository
-snowsql -f snowflake/setup_image_repo.sql
-
-# 4. Build and upload container image
-# (This is included in deploy.sh, but can be done manually with:)
-# npm run build && docker build --platform linux/amd64 -t app:latest .
-
-# 5. Deploy service
-snowsql -f snowflake/deploy.sql
-
-# 6. Check service status
-snowsql -f snowflake/manage_service.sql
-```
-
-### Verification
-
-```bash
-# Check service status
-snowsql -q "SELECT SYSTEM\$GET_SERVICE_STATUS('SPCS_APP_SERVICE');"
-
-# View logs
-snowsql -q "CALL SYSTEM\$GET_SERVICE_LOGS('SPCS_APP_SERVICE', '0');"
-
-# Get service endpoints
-snowsql -q "SHOW ENDPOINTS IN SERVICE SPCS_APP_SERVICE;"
-```
-
-## 🔧 Development
-
-### Adding New API Endpoints
-
-```javascript
-// In server.js, add new endpoints following this pattern:
-app.get('/api/your-endpoint', async (req, res) => {
-    let connection;
-    try {
-        connection = await connectToSnowflake();
-        const rows = await executeQuery(connection, 'YOUR QUERY HERE');
-        res.json({ success: true, data: rows });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch data' });
-    } finally {
-        if (connection) {
-            connection.destroy(); // CRITICAL: Always cleanup
-        }
-    }
-});
-```
-
-### Adding React Components
-
-1. Create new components in `src/components/`
-2. Import and use in `src/App.tsx`
-3. Use TypeScript interfaces for type safety
-
-### Database Changes
-
-1. Update `scripts/setup_database.sql` with new tables/schemas
-2. Update queries in `server.js`  
-3. Redeploy with updated database setup
+Multi-stage Dockerfile optimized for SPCS:
+- **Builder stage**: Compiles React app with TypeScript
+- **Production stage**: Minimal Node.js runtime with security hardening
+- **Platform**: linux/amd64 for Snowflake compatibility
+- **Security**: Non-root user, minimal attack surface
 
 ## 🐛 Troubleshooting
 
-### Common Issues
+### **Local Development Issues**
 
-**Service won't start:**
+**"Failed to fetch sales metrics":**
 ```bash
-# Check logs
-snowsql -q "CALL SYSTEM\$GET_SERVICE_LOGS('SPCS_APP_SERVICE', '0');"
+# Check if database was created
+snowsql -q "SELECT COUNT(*) FROM SPCS_APP_DB.APP_SCHEMA.ORDERS;"
 
-# Verify image exists
-snowsql -q "SHOW IMAGES IN IMAGE REPOSITORY SPCS_APP_DB.IMAGE_SCHEMA.IMAGE_REPO;"
+# Recreate sample data
+./deploy.sh --local
 ```
 
-**CSS/JS not loading:**
-- Ensure React build files are in `build/` directory
-- Check Express static file serving: `app.use(express.static('build'))`
-
-**Database connection issues:**
-- Verify role permissions: `SHOW GRANTS TO ROLE APP_SPCS_ROLE;`
-- Check warehouse access: `USE WAREHOUSE COMPUTE_WH;`
-
-### Debug Commands
-
+**React build not loading:**
 ```bash
-# Service status
-SELECT SYSTEM$GET_SERVICE_STATUS('SPCS_APP_SERVICE');
+# Rebuild React app
+npm run build
 
-# Service logs  
-CALL SYSTEM$GET_SERVICE_LOGS('SPCS_APP_SERVICE', '0');
-
-# Compute pool status
-SHOW COMPUTE POOLS;
-
-# Health check (once deployed)
-# Access /api/health endpoint via service URL
+# Check static files are served
+curl http://localhost:3002/static/js/main.*.js
 ```
 
-## 🏆 Best Practices
+### **SPCS Deployment Issues**
 
-This template follows all `.cursorrules` guidelines:
+**Service shows PENDING:**
+```bash
+# Check service logs
+snowsql -q "CALL SYSTEM\$GET_SERVICE_LOGS('SPCS_APP_DB.APP_SCHEMA.SPCS_APP_SERVICE', '0');"
 
-1. **🏗️ Flat Project Structure**: Single `package.json`, root-level React app, Express serves both API and static files
-2. **🌐 Port Strategy**: Consistent port 3002 across all environments (local, Docker, SPCS)
-3. **🔤 TypeScript First**: All components use TypeScript with proper interfaces
-4. **🔄 Per-request Connections**: Fresh Snowflake connections for each API call (prevents timeouts)
-5. **🔐 Dual Authentication**: Automatic detection between SPCS OAuth and local development
-6. **🛡️ Error Boundaries**: Robust error handling with React error boundaries
-7. **⚡ Essential Endpoints**: Health check, static files, React routing all implemented
-8. **🏷️ CREATE IF NOT EXISTS**: All database scripts are idempotent
-9. **📊 Real Data**: No mock data in production, fallbacks only for local development
-10. **🚀 Unified Deployment**: Single `deploy.sh` script handles everything
-11. **📚 Reference Implementation**: Based on proven Sun Valley SPCS patterns
+# Verify compute pool
+snowsql -q "SHOW COMPUTE POOLS;"
+```
 
-## 📚 Resources
+**API returns 500 errors:**
+```bash
+# Check role permissions
+snowsql -q "SHOW GRANTS TO ROLE APP_SPCS_ROLE;"
 
-- [Sun Valley SPCS Reference](https://github.com/sfc-gh-ujagtap/sun_valley_spcs) - Proven implementation
-- [Snowpark Container Services Documentation](https://docs.snowflake.com/en/developer-guide/snowpark-container-services)
-- [React Documentation](https://reactjs.org/docs)
-- [Express.js Documentation](https://expressjs.com/)
+# Test database access
+snowsql -q "USE ROLE APP_SPCS_ROLE; SELECT COUNT(*) FROM SPCS_APP_DB.APP_SCHEMA.ORDERS;"
+```
+
+**Endpoint not accessible:**
+```bash
+# Get endpoint URL
+snowsql -q "SHOW ENDPOINTS IN SERVICE SPCS_APP_DB.APP_SCHEMA.SPCS_APP_SERVICE;"
+
+# Check service status
+snowsql -q "SELECT SYSTEM\$GET_SERVICE_STATUS('SPCS_APP_DB.APP_SCHEMA.SPCS_APP_SERVICE');"
+```
+
+## 📊 Dashboard Preview
+
+When running, your dashboard displays:
+
+### **📈 Main Dashboard View**
+- **Revenue Card**: $67,971.86 with 12.5% growth indicator
+- **Orders Card**: 504 orders with average $134.87 value
+- **Customers Card**: 220 customers with 15.2% growth
+- **Monthly Trend**: Interactive line chart showing revenue over time
+
+### **🛍️ Product Analytics**
+- **Category Breakdown**: Bar chart comparing Electronics, Clothing, Home & Garden, Books, Sports
+- **Top Products**: Dynamic list updating based on selected category and time period
+- **Performance Metrics**: Revenue per category with trend indicators
+
+### **🎛️ Interactive Filters**
+- **Time Period**: Toggle between 7, 30, 90 days, or all time
+- **Category**: Filter all visualizations by product category
+- **Real-time Updates**: Charts update instantly without page reload
+
+## 🏆 Production-Ready Features
+
+This template includes enterprise-grade features:
+
+- **🔐 Security**: Non-root Docker container, input validation, secure Snowflake connections
+- **🚀 Performance**: Per-request connections, React optimizations, Docker multi-stage builds
+- **📊 Monitoring**: Health check endpoint, comprehensive logging, error boundaries
+- **🛡️ Error Handling**: Graceful degradation, user-friendly error messages, connection cleanup
+- **📱 Responsive**: Mobile-first design, flexible layouts, accessible components
+- **🔄 Scalability**: SPCS auto-scaling, stateless design, efficient queries
+
+## 🎓 Learning Outcomes
+
+By using this template, you'll learn:
+
+1. **SPCS Best Practices**: Proper service configuration, image management, deployment patterns
+2. **React + Express Integration**: API design, state management, component architecture  
+3. **Snowflake Integration**: Authentication methods, connection management, query optimization
+4. **Docker for SPCS**: Multi-stage builds, security hardening, platform targeting
+5. **Production Deployment**: CI/CD patterns, monitoring, troubleshooting
+
+## 📚 Next Steps
+
+### **Extend the Dashboard**
+- Add real-time notifications with WebSockets
+- Implement user authentication and role-based access
+- Add data export functionality (CSV, PDF reports)
+- Create admin panel for data management
+
+### **Advanced Features**  
+- Integrate machine learning predictions
+- Add caching layer (Redis/Snowflake caching)
+- Implement audit logging
+- Add automated testing (Jest, Cypress)
+
+### **Scale for Production**
+- Set up monitoring and alerting
+- Implement proper CI/CD pipeline
+- Add load balancing for high availability
+- Configure backup and disaster recovery
 
 ## 📄 License
 
-MIT License - Use this template freely for your SPCS applications.
+MIT License - Use this template freely for your commercial and personal SPCS applications.
 
+---
+
+**🚀 Ready to build your own analytics dashboard?** This template gives you everything you need to go from zero to production in minutes, not days!

@@ -19,26 +19,30 @@ CREATE COMPUTE POOL IF NOT EXISTS APP_COMPUTE_POOL
 -- Check compute pool status with: DESCRIBE COMPUTE POOL APP_COMPUTE_POOL;
 
 -- Create the service with explicit account
-CREATE SERVICE SPCS_APP_SERVICE
+DROP SERVICE IF EXISTS SPCS_APP_SERVICE;
+
+CREATE SERVICE IF NOT EXISTS SPCS_APP_SERVICE
   IN COMPUTE POOL APP_COMPUTE_POOL
   FROM SPECIFICATION $$
     spec:
-      container:
-      - name: sales-analytics-app
-        image: /SPCS_APP_DB/IMAGE_SCHEMA/IMAGE_REPO/spcs-sales-analytics:latest
+      containers:
+      - name: "sales-analytics-app"
+        image: "/SPCS_APP_DB/IMAGE_SCHEMA/IMAGE_REPO/spcs-sales-analytics:latest"
         env:
-          # Server configuration
-          PORT: 3002
-          NODE_ENV: production
-          
-          # Snowflake connection configuration
-          SNOWFLAKE_ACCOUNT: VDB52565
-          SNOWFLAKE_DATABASE: SPCS_APP_DB
-          SNOWFLAKE_SCHEMA: APP_SCHEMA
-          SNOWFLAKE_WAREHOUSE: COMPUTE_WH
-          SNOWFLAKE_ROLE: APP_SPCS_ROLE
-      endpoint:
-      - name: app-endpoint
+          PORT: "3002"
+          SNOWFLAKE_WAREHOUSE: "COMPUTE_WH"
+          SNOWFLAKE_ROLE: "APP_SPCS_ROLE"
+          SNOWFLAKE_DATABASE: "SPCS_APP_DB"
+          SNOWFLAKE_SCHEMA: "APP_SCHEMA"
+        resources:
+          limits:
+            memory: "6Gi"
+            cpu: "1"
+          requests:
+            memory: "0.5Gi"
+            cpu: "0.5"
+      endpoints:
+      - name: "app-endpoint"
         port: 3002
         public: true
   $$

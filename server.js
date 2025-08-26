@@ -3,7 +3,6 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const snowflake = require('snowflake-sdk');
-const ini = require('ini');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -12,7 +11,9 @@ const HOST = process.env.HOST || 'localhost';
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('build')); // Serve React build files
+
+// Serve static files from the React app build directory
+app.use(express.static(path.join(__dirname, 'build')));
 
 function isRunningInSnowflakeContainer() {
   return fs.existsSync("/snowflake/session/token");
@@ -21,36 +22,21 @@ function isRunningInSnowflakeContainer() {
 function getEnvConnectionOptions() {
   // Check if running inside Snowpark Container Services
   if (isRunningInSnowflakeContainer()) {
-    console.log('🐳 Running in SPCS container - using OAuth token');
     return {
-      // SPCS OAuth requires explicit uppercase account parameter
-      account: process.env.SNOWFLAKE_ACCOUNT || 'VDB52565',
       accessUrl: "https://" + (process.env.SNOWFLAKE_HOST || ''),
+      account: process.env.SNOWFLAKE_ACCOUNT || '',
       authenticator: 'OAUTH',
       token: fs.readFileSync('/snowflake/session/token', 'ascii'),
       role: process.env.SNOWFLAKE_ROLE,
-      warehouse: process.env.SNOWFLAKE_WAREHOUSE,
+      warehouse: process.env.SNOWFLAKE_WAREHOUSE || 'COMPUTE_WH',
       database: process.env.SNOWFLAKE_DATABASE,
       schema: process.env.SNOWFLAKE_SCHEMA,
       clientSessionKeepAlive: true,
     };
   } else {
-    console.log('🖥️  Running locally - using environment variables and config fallback');
-    
-    // Try to read from ~/.snowsql/config as fallback
-    const configPath = path.join(process.env.HOME, '.snowsql', 'config');
-    let connection = {};
-    
-    if (fs.existsSync(configPath)) {
-      console.log('📄 Reading fallback config from ~/.snowsql/config');
-      const config = ini.parse(fs.readFileSync(configPath, 'utf-8'));
-      const connections = config.connections || {};
-      connection = connections.default || {};
-    }
-    
     // Running locally - use environment variables for credentials
     return {
-      account: process.env.SNOWFLAKE_ACCOUNT,
+      account: process.env.SNOWFLAKE_ACCOUNT || '',
       username: process.env.SNOWFLAKE_USER,
       password: process.env.SNOWFLAKE_PASSWORD,
       role: process.env.SNOWFLAKE_ROLE,
@@ -62,36 +48,177 @@ function getEnvConnectionOptions() {
   }
 }
 
-// CRITICAL: Per-request connection pattern to prevent timeouts
-async function connectToSnowflake() {
-    const config = getEnvConnectionOptions();
-    const connection = snowflake.createConnection(config);
-    
-    return new Promise((resolve, reject) => {
-        connection.connect((err, conn) => {
-            if (err) {
-                console.error('❌ Failed to connect to Snowflake:', err);
-                reject(err);
-            } else {
-                console.log('✅ Successfully connected to Snowflake');
-                resolve(connection);
-            }
-        });
+async function connectToSnowflakeFromEnv(connectionName = 'default') {
+  const connection = snowflake.createConnection(getEnvConnectionOptions());
+  await new Promise((resolve, reject) => {
+    connection.connect((err, conn) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(conn);
+      }
     });
+  });
+  return connection;
+}
+
+// Function to read snowsql config (similar to Python version)
+function readSnowsqlConfig(configPath = '~/.snowsql/config') {
+  const expandedPath = configPath.replace('~', require('os').homedir());
+  
+  if (!fs.existsSync(expandedPath)) {
+    throw new Error(`Config file not found at ${expandedPath}`);
+  }
+  
+  const configContent = fs.readFileSync(expandedPath, 'utf8');
+  return parseIniFile(configContent);
+}
+
+// Simple INI file parser
+function parseIniFile(content) {
+  const config = {};
+  let currentSection = null;
+  
+  content.split('\n').forEach(line => {
+    line = line.trim();
+    if (line.startsWith('[') && line.endsWith(']')) {
+      currentSection = line.slice(1, -1);
+      config[currentSection] = {};
+    } else if (line.includes('=') && currentSection) {
+      const [key, value] = line.split('=').map(s => s.trim());
+      config[currentSection][key] = value.replace(/['"]/g, ''); // Remove quotes
+    }
+  });
+  
+  return config;
+}
+
+// Function to load private key (Node.js Snowflake SDK expects PEM string)
+function loadPrivateKey(privateKeyPath) {
+  try {
+    const keyPath = privateKeyPath.replace('~', require('os').homedir());
+    
+    console.log(`Loading private key from: ${keyPath}`);
+    const keyContent = fs.readFileSync(keyPath, 'utf8');
+    
+    // The Node.js Snowflake SDK expects the private key as a PEM string
+    console.log('Successfully loaded private key as PEM string');
+    return keyContent;
+  } catch (error) {
+    console.error('Error loading private key:', error);
+    return null;
+  }
+}
+
+// Connect to Snowflake using default configuration
+async function connectToSnowflakeFromConfig(connectionName = 'default') {
+  try {
+    console.log(`Connecting to Snowflake using ${connectionName}...`);
+    
+    // Read configuration
+    const config = readSnowsqlConfig();
+    
+    // Try to get connection parameters from the specified connection
+    let sectionName = `connections.${connectionName}`;
+    if (!config[sectionName]) {
+      // Fall back to direct section name
+      const availableSections = Object.keys(config).filter(s => !s.startsWith('connections.'));
+      if (availableSections.length > 0) {
+        sectionName = availableSections[0];
+        console.log(`Connection '${connectionName}' not found, using '${sectionName}'`);
+      } else {
+        throw new Error('No valid connection configuration found');
+      }
+    }
+    
+    const section = config[sectionName];
+    console.log('Found config section:', sectionName);
+    
+    // Extract connection parameters
+    const account = section.accountname || section.account;
+    const username = section.username || section.user;
+    const privateKeyPath = section.private_key_path;
+    const password = section.password;
+    const warehouse = section.warehousename || section.warehouse || process.env.SNOWFLAKE_WAREHOUSE || 'COMPUTE_WH';
+    const database = section.databasename || section.database || process.env.SNOWFLAKE_DATABASE;
+    const schema = section.schemaname || section.schema || process.env.SNOWFLAKE_SCHEMA;
+    
+    if (!account || !username) {
+      throw new Error('Missing required connection parameters (account, username)');
+    }
+    
+    if (!privateKeyPath && !password) {
+      throw new Error('Missing authentication method (private_key_path or password)');
+    }
+    
+    console.log(`Account: ${account}`);
+    console.log(`Username: ${username}`);
+    console.log(`Warehouse: ${warehouse}`);
+    
+    // Create connection parameters
+    const connectionParams = {
+      account: account,
+      username: username,
+      warehouse: warehouse
+    };
+    
+    // Add database and schema if available
+    if (database) connectionParams.database = database;
+    if (schema) connectionParams.schema = schema;
+    
+    // Add authentication method
+    if (privateKeyPath) {
+      console.log('Using private key authentication');
+      const privateKey = loadPrivateKey(privateKeyPath);
+      if (!privateKey) {
+        throw new Error('Failed to load private key');
+      }
+      connectionParams.privateKey = privateKey;
+      connectionParams.authenticator = 'SNOWFLAKE_JWT';
+    } else {
+      console.log('Using password authentication');
+      connectionParams.password = password;
+    }
+    
+    // Create and connect
+    const connection = snowflake.createConnection(connectionParams);
+    
+    await new Promise((resolve, reject) => {
+      connection.connect((err, conn) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(conn);
+        }
+      });
+    });
+    
+    console.log('✅ Successfully connected to Snowflake!');
+    return connection;
+    
+  } catch (error) {
+    console.error('❌ Error connecting to Snowflake:', error);
+    throw error;
+  }
+}
+
+async function connectToSnowflake(connectionName = 'default') {
+  if (isRunningInSnowflakeContainer()) {
+    return await connectToSnowflakeFromEnv(connectionName);
+  } else {
+    return await connectToSnowflakeFromConfig(connectionName);
+  }
 }
 
 // Execute query with proper error handling
-async function executeQuery(connection, query, binds = []) {
+async function executeQuery(connection, query) {
     return new Promise((resolve, reject) => {
         connection.execute({
             sqlText: query,
-            binds: binds,
             complete: (err, stmt, rows) => {
                 if (err) {
-                    console.error('❌ Query execution failed:', err);
                     reject(err);
                 } else {
-                    console.log(`✅ Query executed successfully. Returned ${rows.length} rows.`);
                     resolve(rows);
                 }
             }
@@ -143,7 +270,7 @@ app.get('/api/data', async (req, res) => {
     let connection;
     
     try {
-        connection = await connectToSnowflake();
+        connection = await connectToSnowflake('default');
         
         // Get sales metrics summary
         const query = `
@@ -189,7 +316,7 @@ app.get('/api/monthly-revenue', async (req, res) => {
     let connection;
     
     try {
-        connection = await connectToSnowflake();
+        connection = await connectToSnowflake('default');
         
         const query = `
             SELECT 
@@ -232,7 +359,7 @@ app.get('/api/category-sales', async (req, res) => {
     let connection;
     
     try {
-        connection = await connectToSnowflake();
+        connection = await connectToSnowflake('default');
         
         let query;
         if (category && category !== 'all') {
@@ -288,7 +415,7 @@ app.get('/api/top-products', async (req, res) => {
     let connection;
     
     try {
-        connection = await connectToSnowflake();
+        connection = await connectToSnowflake('default');
         
         const query = `
             SELECT 
@@ -326,7 +453,7 @@ app.get('/api/categories', async (req, res) => {
     let connection;
     
     try {
-        connection = await connectToSnowflake();
+        connection = await connectToSnowflake('default');
         
         const query = `
             SELECT DISTINCT category
@@ -366,7 +493,7 @@ app.get('/api/top-products-by-category', async (req, res) => {
     let connection;
     
     try {
-        connection = await connectToSnowflake();
+        connection = await connectToSnowflake('default');
         
         let query;
         if (category && category !== 'all') {
@@ -439,4 +566,3 @@ app.listen(PORT, () => {
         console.log(`🔍 Health check: http://${HOST}:${PORT}/api/health`);
     }
 });
-

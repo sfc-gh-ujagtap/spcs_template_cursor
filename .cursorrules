@@ -139,4 +139,4 @@ CMD ["node", "server.js"]
 - The script should setup image_repo
 - The script should build docker image and push it to Snowflake
 - Then it should start the service and wait for endpoints to be available
-- **CRITICAL**: Always use `-c default` flag in all snowsql commands to specify connection
+- Always use `-c default` flag in all snowsql commands to specify connection

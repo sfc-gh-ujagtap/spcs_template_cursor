@@ -1,6 +1,7 @@
 -- Database setup script for SPCS applications
 -- Replace SPCS_APP_DB with your actual database name
 
+-- Use the app role and create new database/schema as intended by deploy script
 USE ROLE APP_SPCS_ROLE;
 USE WAREHOUSE COMPUTE_WH;
 
