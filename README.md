@@ -187,12 +187,7 @@ Create your SnowSQL configuration file with a default connection:
 # Replace with your Snowflake account details
 accountname = your-account-name.region.cloud
 username = your-username
-# Option 1: Use password (less secure)
 password = your-password
-
-# Option 2: Use key-pair authentication (recommended)
-# private_key_path = ~/.ssh/snowflake_key.p8
-# private_key_passphrase = your-passphrase
 
 # Default connection settings
 warehousename = COMPUTE_WH
@@ -203,38 +198,7 @@ network_timeout = 300
 query_timeout = 300
 ```
 
-### **4. Set Up Key-Pair Authentication (Recommended)**
-
-For enhanced security, use key-pair authentication:
-
-```bash
-# Generate RSA key pair
-openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out ~/.ssh/snowflake_key.p8 -nocrypt
-
-# Generate public key  
-openssl rsa -in ~/.ssh/snowflake_key.p8 -pubout -out ~/.ssh/snowflake_key.pub
-
-# Get the public key value (copy this)
-grep -v "BEGIN\|END" ~/.ssh/snowflake_key.pub | tr -d '\n'
-```
-
-**Configure the public key in Snowflake:**
-```sql
--- Connect to Snowflake and run:
-USE ROLE ACCOUNTADMIN;
-ALTER USER your-username SET RSA_PUBLIC_KEY='<your-public-key-value>';
-```
-
-**Update your SnowSQL config:**
-```ini
-[connections.default]
-accountname = your-account-name.region.cloud  
-username = your-username
-private_key_path = ~/.ssh/snowflake_key.p8
-# Remove the password line when using key-pair auth
-```
-
-### **5. Configure Snow CLI**
+### **4. Configure Snow CLI**
 
 Set up the Snow CLI with your Snowflake connection:
 
@@ -246,17 +210,9 @@ snow connection add default \
   --password your-password \
   --warehouse COMPUTE_WH \
   --role ACCOUNTADMIN
-
-# Or for key-pair authentication:
-snow connection add default \
-  --account your-account-name.region.cloud \
-  --user your-username \
-  --private-key-path ~/.ssh/snowflake_key.p8 \
-  --warehouse COMPUTE_WH \
-  --role ACCOUNTADMIN
 ```
 
-### **6. Verify Your Setup**
+### **5. Verify Your Setup**
 
 Test that everything is configured correctly:
 
@@ -276,7 +232,7 @@ node --version  # Should be 18.x or higher
 npm --version
 ```
 
-### **7. Required Snowflake Permissions**
+### **6. Required Snowflake Permissions**
 
 Your Snowflake user needs these permissions for SPCS deployment:
 
